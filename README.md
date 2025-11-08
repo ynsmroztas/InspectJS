@@ -26,7 +26,7 @@ It extracts **endpoints**, **API keys**, **tokens**, and potential **client-side
 ## ⚙️ Installation
 
 ```bash
-git clone https://github.com/mitsec/inspectjs.git
+git clone https://github.com/ynsmroztas/InspectJS.git
 cd inspectjs
 pip install -r requirements.txt
 python inspectjs.py -u https://example.com
@@ -129,10 +129,11 @@ python inspectjs.py -u https://target.com -d 3
 **mitsec**  
 - 🐦 Twitter: [@ynsmroztas](https://x.com/ynsmroztas)  
 - 💻 GitHub: [github.com/ynsmroztas](https://github.com/ynsmroztas)  
-- 🌐 Project: [inspectJS](https://github.com/mitsec/inspectjs)
+- 🌐 Project: [inspectJS](https://github.com/ynsmroztas/InspectJS)
 
 ---
 
 <div align="center">
   <sub>© 2025 mitsec — Licensed under the <a href="LICENSE">MIT License</a></sub>
 </div>
+

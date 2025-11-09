@@ -82,7 +82,10 @@ class JSSpiderAnalyzer:
                 r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
             ],
             'ip_addresses': [
-                r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b',
+                # Strict IP validation: matches only valid IPs (0-255 per octet)
+                # Uses negative lookbehind/lookahead to avoid SVG paths (e.g., M42.06.6.16)
+                # Each octet: 25[0-5] (250-255) | 2[0-4][0-9] (200-249) | [01]?[0-9][0-9]? (0-199)
+                r'(?<![0-9.])(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(?![0-9.])',
             ]
         }
         

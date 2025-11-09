@@ -59,7 +59,9 @@ class JSSpiderAnalyzer:
             'passwords': [
                 r'(?:password|PASSWORD)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
                 r'(?:passwd|PASSWD)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:pass|PASS)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
                 r'(?:pwd|PWD)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:psw|PSW)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
                 r'(?:db_password|dbPassword|DB_PASSWORD|database_password)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
             ],
             'endpoints': [

@@ -38,21 +38,31 @@ class JSSpiderAnalyzer:
     def __init__(self, verify_ssl=False):
         self.verify_ssl = verify_ssl
         self.patterns = {
+            # API key patterns - More specific to avoid false positives from JS function names
+            # Uses specific keywords like 'apiKey', 'apikey', 'secret', etc. instead of just 'key'
+            # Minimum length of 20 chars to avoid matching short placeholder values
             'api_keys': [
-                r'api[_-]?key["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
-                r'apikey["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
-                r'secret["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
-                r'key["\']?\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
+                r'(?:api[_-]?key|apikey|apiKey|API_KEY|APIKEY)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
+                r'(?:secret|SECRET|secretKey|secret_key)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
+                r'(?:access[_-]?token|accessToken|ACCESS_TOKEN)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
+                r'(?:client[_-]?secret|clientSecret|CLIENT_SECRET)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
+                r'(?:auth[_-]?token|authToken|AUTH_TOKEN)\s*[:=]\s*["\']([a-zA-Z0-9_\-]{20,60})["\']',
             ],
             'jwt_tokens': [
                 r'eyJhbGciOiJ[^\s"\']+',
                 r'["\']eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+["\']',
             ],
+            # Password patterns - Minimum length of 5 chars to filter out very short test values
+            # while still catching potentially legitimate shorter passwords
+            # The false positive filter will catch placeholder text like 'test', 'demo', etc.
+            # Added specific database password patterns for better detection
             'passwords': [
-                r'password["\']?\s*[:=]\s*["\']([^"\'\s]{3,50})["\']',
-                r'pass["\']?\s*[:=]\s*["\']([^"\'\s]{3,50})["\']',
-                r'pwd["\']?\s*[:=]\s*["\']([^"\'\s]{3,50})["\']',
-                r'psw["\']?\s*[:=]\s*["\']([^"\'\s]{3,50})["\']',
+                r'(?:password|PASSWORD)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:passwd|PASSWD)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:pass|PASS)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:pwd|PWD)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:psw|PSW)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
+                r'(?:db_password|dbPassword|DB_PASSWORD|database_password)\s*[:=]\s*["\']([^"\'\s]{5,50})["\']',
             ],
             'endpoints': [
                 r'["\'](https?://[^"\']+?/api/[^"\']*?)["\']',
@@ -334,17 +344,61 @@ class JSSpiderAnalyzer:
                 return True, critical
         return False, None
 
+    def is_likely_false_positive(self, value, category):
+        """
+        Filter out likely false positives to reduce noise in results
+
+        This method identifies and excludes common JavaScript patterns that match
+        the regex patterns but are not actually secrets (like function names)
+
+        Args:
+            value: The matched string value to check
+            category: The category of the finding (e.g., 'api_keys', 'passwords')
+
+        Returns:
+            True if the value is likely a false positive, False otherwise
+        """
+        # Only apply filtering to sensitive categories prone to false positives
+        if category in ['api_keys', 'passwords']:
+            # Check if it looks like a camelCase function name
+            # Pattern: starts lowercase, contains at least one uppercase letter
+            # Example: getBoundingClientRect, getLargestStringFromArr
+            if re.match(r'^[a-z][a-zA-Z0-9]*(?:[A-Z][a-z0-9]*)+$', value):
+                # Common JS function prefixes that are not secrets
+                # These are standard JavaScript/library function naming patterns
+                function_prefixes = ['get', 'set', 'is', 'has', 'create', 'update',
+                                   'delete', 'find', 'fetch', 'load', 'save',
+                                   'handle', 'on', 'init', 'render', 'animate',
+                                   'calculate', 'parse', 'format', 'validate']
+                for prefix in function_prefixes:
+                    if value.lower().startswith(prefix):
+                        return True
+
+            # Filter out values that are too short (less than 5 characters)
+            # Very short values are usually test data or placeholders
+            if len(value) < 5:
+                return True
+
+        return False
+
     def scan_js_content(self, content, url):
         """Scan JS content for sensitive data"""
         local_results = defaultdict(list)
-        
-        # Pattern scanning
+
+        # Pattern scanning - Search for sensitive data using regex patterns
         for category, patterns in self.patterns.items():
             for pattern in patterns:
                 matches = re.finditer(pattern, content, re.IGNORECASE)
                 for match in matches:
+                    # Extract the captured group (the actual value) if it exists
                     value = match.group(1) if match.groups() else match.group(0)
-                    
+
+                    # Skip false positives (e.g., JS function names like getBoundingClientRect)
+                    # This prevents the tool from flagging common JS patterns as secrets
+                    if self.is_likely_false_positive(value, category):
+                        continue
+
+                    # Store the finding with context for manual review
                     local_results[category].append({
                         'value': value,
                         'source_url': url,

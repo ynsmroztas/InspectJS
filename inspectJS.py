@@ -5,18 +5,14 @@ Author: mitsec (x.com/ynsmroztas)
 """
 
 import re
-import sys
 import argparse
 import requests
 from urllib.parse import urljoin, urlparse, parse_qs
-import json
 from collections import defaultdict
 import time
-import os
 import concurrent.futures
 from bs4 import BeautifulSoup
 import urllib3
-import ssl
 
 # Disable SSL warnings
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
